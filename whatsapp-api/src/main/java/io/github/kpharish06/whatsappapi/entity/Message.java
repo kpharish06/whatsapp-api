@@ -3,6 +3,8 @@ package io.github.kpharish06.whatsappapi.entity;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -49,7 +51,8 @@ public class Message {
     @Column(name = "attachment_type")
     private AttachmentType attachmentType;
 
-    @Column(name = "created_at", nullable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
     
     private Instant timestamp;

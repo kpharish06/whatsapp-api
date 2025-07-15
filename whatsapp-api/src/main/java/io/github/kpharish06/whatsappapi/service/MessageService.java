@@ -1,5 +1,7 @@
 package io.github.kpharish06.whatsappapi.service;
 
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -15,5 +17,7 @@ public interface MessageService {
 	Page<MessageResponse> getMessages(Long conversationId, Pageable pageable, Long userId);
 //	EmojiReaction reactToMessageWithEmoji(EmojiReactionRequest request, Long userId);
 	EmojiReactionResponse reactToMessageWithEmoji(EmojiReactionRequest request, Long userId);
+	void markMessageAsSeen(UUID messageId, Long userId);
+	
 
 }

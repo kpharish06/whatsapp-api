@@ -10,6 +10,7 @@ import io.github.kpharish06.whatsappapi.dto.EmojiReactionRequest;
 import io.github.kpharish06.whatsappapi.dto.EmojiReactionResponse;
 import io.github.kpharish06.whatsappapi.dto.MessageRequest;
 import io.github.kpharish06.whatsappapi.dto.MessageResponse;
+import io.github.kpharish06.whatsappapi.dto.SeenRequest;
 import io.github.kpharish06.whatsappapi.entity.EmojiReaction;
 import io.github.kpharish06.whatsappapi.service.MessageService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,13 @@ public class WebSocketController {
         messagingTemplate.convertAndSend(
             "/topic/chatroom/" + request.getConversationId() + "/emoji", reaction);
     }
+    @MessageMapping("/seen")
+    public void handleSeen(@Payload SeenRequest req,
+                           @Header("user-id") Long userId) {
+        messageService.markMessageAsSeen(req.getMessageId(), userId);
+    }
+
+
 
     
 }

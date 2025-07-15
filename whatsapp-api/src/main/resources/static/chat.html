@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Chat App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: sans-serif; margin: 0; background: #f0f0f0; }
+    .container { max-width: 800px; margin: 20px auto; background: #fff; border-radius: 8px; overflow: hidden; }
+    .header { display: flex; justify-content: space-between; align-items: center; background: #4CAF50; color: #fff; padding: 10px; }
+    .header .info { font-weight: bold; }
+    .header button { margin-left: 10px; background: #2e8b57; border: none; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .chat-box { height: 400px; overflow-y: auto; padding: 10px; background: #fafafa; display: flex; flex-direction: column; }
+    .message { margin: 5px 0; padding: 8px 12px; border-radius: 8px; max-width: 70%; }
+    .you { background: #dcf8c6; align-self: flex-end; text-align: right; }
+    .other { background: #eee; align-self: flex-start; text-align: left; }
+    .meta { font-size: 10px; color: #555; margin-top: 4px; }
+    .input-area { display: flex; padding: 10px; border-top: 1px solid #ddd; }
+    .input-area input[type="text"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    .input-area button { margin-left: 8px; padding: 8px 16px; background: #4CAF50; border: none; color: white; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="info" id="convInfo">Loading…</div>
+    <div>
+      <button id="muteBtn">Mute</button>
+      <button id="blockBtn">Block Other</button>
+    </div>
+  </div>
+
+  <div class="chat-box" id="chatBox"></div>
+
+  <div class="input-area">
+    <input type="text" id="messageInput" placeholder="Type a message…" />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script>
+  // Configuration & State
+  const apiBase = '/api';
+  const currentUserId = parseInt(prompt("Your user ID?"), 10);
+  const conversationId = parseInt(prompt("Conversation ID?"), 10);
+  let participants = [];
+  let isMuted = false;
+  let stompClient;
+
+  // Initialize
+  document.getElementById('muteBtn').onclick = toggleMute;
+  document.getElementById('blockBtn').onclick = blockOther;
+
+  async function init() {
+    await loadConversationInfo();
+    connectWebSocket();
+    await loadMessages();
+  }
+
+  // Load Conversation Metadata
+  async function loadConversationInfo() {
+    const res = await fetch(`${apiBase}/conversations?page=0&size=1`, {
+      headers: { 'X-User-Id': currentUserId }
+    });
+    const json = await res.json();
+    const conv = json.content.find(c => c.id === conversationId);
+    if (!conv) return alert("You are not in that conversation.");
+
+    participants = conv.participants;
+    document.getElementById('convInfo').innerText =
+      (conv.type === 'DIRECT'
+        ? participants.find(p => p.id !== currentUserId).profileName
+        : conv.name) +
+      ` (ID: ${conversationId})`;
+
+    // Initial mute state via backend: assume false by default
+    isMuted = false;
+    updateMuteButton();
+  }
+
+  // Load Past Messages (Paginated)
+  async function loadMessages() {
+    const res = await fetch(
+      `${apiBase}/messages?conversationId=${conversationId}&page=0&size=50&userId=${currentUserId}`
+    ,{ headers: { 'X-User-Id': currentUserId }});
+    const page = await res.json();
+    const box = document.getElementById('chatBox');
+    box.innerHTML = '';
+    page.content.reverse().forEach(renderMessage);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // Send Message (Text Only)
+  async function sendMessage() {
+    if (isMuted) return alert("You are muted in this conversation.");
+    const input = document.getElementById('messageInput');
+    const text = input.value.trim();
+    if (!text) return;
+    const form = new FormData();
+    form.append('senderId', currentUserId);
+    form.append('conversationId', conversationId);
+    form.append('content', text);
+
+    const res = await fetch(`${apiBase}/messages`, {
+      method: 'POST', body: form
+    });
+    const msg = await res.json();
+    renderMessage(msg);
+    input.value = '';
+  }
+
+  // Render a Single Message Bubble
+  function renderMessage(msg) {
+    const div = document.createElement('div');
+    div.className = 'message ' + (msg.senderId === currentUserId ? 'you' : 'other');
+    div.innerHTML = `
+      <div><strong>${msg.senderName}</strong>: ${msg.content || ''}</div>
+      <div class="meta">
+        ${new Date(msg.timestamp).toLocaleTimeString()} 
+        ${msg.seen ? '✓✓' : msg.delivered ? '✓' : ''}
+      </div>`;
+    document.getElementById('chatBox').appendChild(div);
+    document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+  }
+
+  // WebSocket Real‑Time Updates
+  function connectWebSocket() {
+    const sock = new SockJS('/ws');
+    stompClient = Stomp.over(sock);
+    stompClient.connect({}, () => {
+      // subscribe to new messages
+      stompClient.subscribe(`/topic/chatroom/${conversationId}`, m => {
+        const msg = JSON.parse(m.body);
+        renderMessage(msg);
+      });
+      // subscribe to emoji reactions if needed...
+    });
+  }
+
+  // Mute / Unmute Conversation
+  async function toggleMute() {
+    isMuted = !isMuted;
+    updateMuteButton();
+    await fetch(`${apiBase}/conversations/${conversationId}/mute?muted=${isMuted}`, {
+      method: 'PUT', headers: { 'X-User-Id': currentUserId }
+    });
+  }
+  function updateMuteButton() {
+    document.getElementById('muteBtn').innerText = isMuted ? 'Unmute' : 'Mute';
+  }
+
+  // Block (Remove) the Other Participant
+  async function blockOther() {
+    const other = participants.find(p => p.id !== currentUserId);
+    if (!other) return alert("No one to block.");
+    if (!confirm(`Block ${other.profileName}?`)) return;
+    await fetch(`${apiBase}/conversations/${conversationId}/participants/${other.id}`, {
+      method: 'DELETE', headers: { 'X-User-Id': currentUserId }
+    });
+    alert(`${other.profileName} has been blocked/removed.`);
+    location.reload();
+  }
+
+
+  // Kick off initialization
+  init();
+</script>
+</body>
+</html>

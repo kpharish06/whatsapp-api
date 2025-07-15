@@ -1,7 +1,9 @@
 package io.github.kpharish06.whatsappapi.service;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,7 @@ import io.github.kpharish06.whatsappapi.entity.Conversation;
 import io.github.kpharish06.whatsappapi.entity.Emoji;
 import io.github.kpharish06.whatsappapi.entity.EmojiReaction;
 import io.github.kpharish06.whatsappapi.entity.Message;
+import io.github.kpharish06.whatsappapi.entity.MessageSentStatus;
 import io.github.kpharish06.whatsappapi.entity.MessageStatus;
 import io.github.kpharish06.whatsappapi.entity.UserProfile;
 import io.github.kpharish06.whatsappapi.repository.ConversationRepository;
@@ -65,6 +68,7 @@ public class MessageServiceImpl implements MessageService {
 		         .content(request.getContent())
 		         .attachmentPath(attachmentResponse != null ? attachmentResponse.getPath() : null)
 		         .attachmentType(attachmentResponse != null ? attachmentResponse.getType() : null)
+		         .createdAt(Instant.now())
 		         .timestamp(Instant.now())
 		         .build();
 		 message = messageRepository.save(message);
@@ -73,6 +77,7 @@ public class MessageServiceImpl implements MessageService {
 		    status.setMessage(message);
 		    status.setUser(sender);
 		    status.setDeliveredAt(Instant.now());
+		    status.setStatus(MessageSentStatus.DELIVERED);  
 		    messageStatusRepository.save(status);
 		
 	     return MessageResponse.builder()
@@ -109,6 +114,7 @@ public class MessageServiceImpl implements MessageService {
 			                s.setMessage(message);
 			                s.setUser(userRepository.getReferenceById(userId));
 			                s.setDeliveredAt(Instant.now());
+			                s.setStatus(MessageSentStatus.DELIVERED);
 			                return messageStatusRepository.save(s);
 			            });
 
@@ -169,6 +175,25 @@ public class MessageServiceImpl implements MessageService {
                 .reactedAt(reaction.getReactedAt())
                 .build();
         }
+	
+	@Transactional
+	@Override
+	public void markMessageAsSeen(UUID messageId, Long userId) {
+	    Message message = messageRepository.findById(messageId)
+	        .orElseThrow(() -> new RuntimeException("Message not found"));
+
+	    MessageStatus status = messageStatusRepository
+	        .findByMessageIdAndUserId(messageId, userId)
+	        .orElseThrow(() -> new RuntimeException("Message status not found"));
+
+	    if (status.getSeenAt() == null) {
+	        status.setSeenAt(Instant.now());
+	        status.setStatus(MessageSentStatus.SEEN);
+	        messageStatusRepository.save(status);
+
+	    }
+	}
+
 	
 	
 }

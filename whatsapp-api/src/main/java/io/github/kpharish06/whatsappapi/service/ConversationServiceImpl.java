@@ -2,6 +2,7 @@ package io.github.kpharish06.whatsappapi.service;
 
 import io.github.kpharish06.whatsappapi.dto.ConversationRequest;
 import io.github.kpharish06.whatsappapi.dto.ConversationResponse;
+import io.github.kpharish06.whatsappapi.dto.ParticipantResponse;
 import io.github.kpharish06.whatsappapi.entity.Conversation;
 import io.github.kpharish06.whatsappapi.entity.ConversationParticipant;
 import io.github.kpharish06.whatsappapi.entity.ConversationSettings;
@@ -121,9 +122,12 @@ public class ConversationServiceImpl implements ConversationService {
         boolean isAdmin = convo.getType() == ConversationType.GROUP &&
                           convo.getCreatedBy().getId().equals(currentUserId);
 
-        List<Long> participantIds = convo.getParticipants().stream()
-                .map(p -> p.getUser().getId())
-                .collect(Collectors.toList());
+        List<ParticipantResponse> participants = convo.getParticipants().stream()
+        		.map(cp -> ParticipantResponse.builder()
+        				.id(cp.getUser().getId())
+        				.profileName(cp.getUser().getProfileName())
+        				.build())
+        		.toList();
 
         return ConversationResponse.builder()
                 .id(convo.getId())
@@ -131,8 +135,8 @@ public class ConversationServiceImpl implements ConversationService {
                 .type(convo.getType())
                 .createdAt(convo.getCreatedAt())
                 .createdBy(convo.getCreatedBy().getId())
-                .participantIds(participantIds)
                 .isAdmin(isAdmin)
+                .participants(participants)
                 .build();
     }
 

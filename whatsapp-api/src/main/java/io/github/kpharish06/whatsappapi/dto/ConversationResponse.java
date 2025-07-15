@@ -16,14 +16,12 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class ConversationResponse {
-
     private Long id;
     private String name;
     private ConversationType type;
     private LocalDateTime createdAt;
     private Long createdBy;
-    private List<Long> participantIds;
-    
     private boolean isAdmin;
-
+    private List<ParticipantResponse> participants;    // <-- replace participantIds
 }
+
