@@ -49,7 +49,7 @@ public class MessageController {
 	}
 	@GetMapping
 	public ResponseEntity<Page<MessageResponse>> getMessages(
-	        @RequestParam Long conversationId,
+			@RequestParam Long conversationId,
 	        @RequestHeader("X-User-Id") Long userId,
 	        @ParameterObject Pageable pageable) {
 	    Page<MessageResponse> page = messageService.getMessages(conversationId, pageable, userId);

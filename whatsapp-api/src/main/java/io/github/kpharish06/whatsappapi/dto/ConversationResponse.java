@@ -22,6 +22,6 @@ public class ConversationResponse {
     private LocalDateTime createdAt;
     private Long createdBy;
     private boolean isAdmin;
-    private List<ParticipantResponse> participants;    // <-- replace participantIds
+    private List<ParticipantResponse> participants;   
 }
 
