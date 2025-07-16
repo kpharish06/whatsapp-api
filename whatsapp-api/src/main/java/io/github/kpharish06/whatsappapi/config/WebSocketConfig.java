@@ -27,6 +27,4 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 		 config.enableSimpleBroker("/topic"); // Broker will broadcast messages on /topic/...
 	     config.setApplicationDestinationPrefixes("/app"); // Clients will send messages to /app/...
 	 }
-
-	
 }
